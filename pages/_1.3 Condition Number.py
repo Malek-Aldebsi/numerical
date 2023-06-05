@@ -6,7 +6,6 @@ from docx.shared import Inches
 from sympy import diff, symbols, sympify, lambdify, N
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('TkAgg')
 from docx import Document
 
 

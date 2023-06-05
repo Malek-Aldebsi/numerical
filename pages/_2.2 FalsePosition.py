@@ -5,7 +5,6 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('TkAgg')
 
 from docx import Document
 from docx.shared import Inches
