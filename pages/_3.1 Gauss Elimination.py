@@ -264,7 +264,7 @@ with st.form("Fixed_Point_form"):
         equations[i] = sympify(equations[i])
         st.latex(equations[i])
 
-    options = ['without scaling or pivoting', 'with simple pivoting', 'with partial pivoting', 'with online approach', 'with offline approach']
+    options = ['with simple pivoting', 'without scaling or pivoting', 'with partial pivoting', 'with online approach', 'with offline approach']
     selected_option = st.selectbox('Select an option:', options)
 
     submit_button = st.form_submit_button(label="Submit")
