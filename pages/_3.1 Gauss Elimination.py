@@ -6,36 +6,19 @@ import streamlit as st
 import numpy as np
 from sympy import sympify
 
-# matrix = np.array([[1, 2, 4], [4, 5, 6], [7, 8, 9]])
-#
-# # Convert the matrix to a DataFrame
-# df = pd.DataFrame(matrix)
-# data = df.to_numpy()
-#
-# # Display the matrix without index using st.table()
-# data
 
-# form augmented matrix
 def matrix_representation(system, syms):
-    # extract equation coefficients and constant
     a, b = sp.linear_eq_to_matrix(system, syms)
-
-    # insert right hand size values into coefficients matrix
     return np.asarray(a.col_insert(len(syms), b), dtype=np.float32)
 
 
 def upper_triangular_without_scaling_or_pivoting(M):
-    # iterate over matrix rows
     for i in range(0, M.shape[0] - 1):
-        # select pivot value
         pivot = M[i][i]
 
-        # if pivot is zero, remaining rows are all zeros
         if pivot == 0:
-            # return upper triangular matrix
             return M
 
-        # iterate over remaining rows
         for j in range(i + 1, M.shape[0]):
             # print(M, '\n')
             # print(float(M[j][i] / M[i][i]))
@@ -226,23 +209,17 @@ def upper_triangular_with_offline_approach(M):
     return M
 
 
-def back_substitution(M, syms):
-    M = M.copy()
-    syms = syms.copy()
-    result = {}
-    # symbolic variable index
-    for i, row in reversed(list(enumerate(M))):
-        # create symbolic equation
-        eqn = -M[i][-1]
-        for j in range(len(syms)):
-            eqn += syms[j] * row[j]
+def back_substitution(augmented_matrix):
+    n = len(augmented_matrix)
+    x = [0] * n
 
-        # solve symbolic expression and store variable
-        result[str(syms[i])] = sp.solve(eqn, syms[i])[0]
-        syms[i] = result[str(syms[i])]
+    for i in range(n - 1, -1, -1):
+        x[i] = augmented_matrix[i][-1]
+        for j in range(i + 1, n):
+            x[i] -= augmented_matrix[i][j] * x[j]
+        x[i] /= augmented_matrix[i][i]
 
-    # return list of evaluated variables
-    return result
+    return x
 
 
 st.title('Gauss Elimination')
@@ -253,6 +230,7 @@ with st.form("Fixed_Point_form"):
         variable_num = st.text_input("Enter the number of variables", value=3)
         variable_num = int(variable_num)
         st.write('variable number:', variable_num)
+
     with col2:
         st.text('')
         st.text('')
@@ -260,24 +238,24 @@ with st.form("Fixed_Point_form"):
 
     equations = {}
     for i in range(variable_num):
-        equations[i] = st.text_input(f"equation #{i}", value=r"2 * x1 - x2 + 2 * x3 + 2 * x4 + 0 * x5 - 0")
+        equations[i] = st.text_input(f"equation #{i}", value=r"0 * x1 + 0 * x2 + 0 * x3 + 0 * x4 + 0 * x5 + 0")
         equations[i] = sympify(equations[i])
         st.latex(equations[i])
 
-    options = ['with simple pivoting', 'without scaling or pivoting', 'with partial pivoting', 'with online approach', 'with offline approach']
+    options = ['without scaling or pivoting', 'with simple pivoting', 'with partial pivoting', 'with online approach', 'with offline approach']
     selected_option = st.selectbox('Select an option:', options)
 
     submit_button = st.form_submit_button(label="Submit")
 
     if submit_button:
-        x1, x2, x3, x4, x5 = sp.symbols('x1 x2 x3 x4 x5')
-        symbolic_vars = [x1, x2, x3, x4, x5]
+        x1, x2, x3, x4, x5, x6, x7, x8, x9, x10 = sp.symbols('x1 x2 x3 x4 x5 x6 x7 x8 x9 x10')
+        symbolic_vars = [x1, x2, x3, x4, x5, x6, x7, x8, x9, x10]
 
         _equations = [
             sympify(equation) for index, equation in equations.items()
         ]
 
-        augmented_matrix = matrix_representation(system=_equations, syms=symbolic_vars)
+        augmented_matrix = matrix_representation(system=_equations, syms=symbolic_vars[:variable_num])
         st.text('augmented matrix:')
         augmented_matrix
 
@@ -287,15 +265,16 @@ with st.form("Fixed_Point_form"):
             st.text('upper triangular without scaling or pivoting:')
             upper_triangular_without_scaling_or_pivoting
             st.text('solutions:')
-            solutions = back_substitution(upper_triangular_without_scaling_or_pivoting, symbolic_vars)
+            solutions = back_substitution(upper_triangular_without_scaling_or_pivoting)
             solutions
+
         elif selected_option == 'with simple pivoting':
             upper_triangular_with_simple_pivoting = upper_triangular_with_simple_pivoting(
                 augmented_matrix.copy())
             st.text('upper triangular with simple pivoting:')
             upper_triangular_with_simple_pivoting
             st.text('solutions:')
-            solutions = back_substitution(upper_triangular_with_simple_pivoting, symbolic_vars)
+            solutions = back_substitution(upper_triangular_with_simple_pivoting)
             solutions
 
         elif selected_option == 'with partial pivoting':
@@ -304,7 +283,7 @@ with st.form("Fixed_Point_form"):
             st.text('upper triangular with partial pivoting:')
             upper_triangular_with_partial_pivoting
             st.text('solutions:')
-            solutions = back_substitution(upper_triangular_with_partial_pivoting, symbolic_vars)
+            solutions = back_substitution(upper_triangular_with_partial_pivoting)
             solutions
 
         elif selected_option == 'with online approach':
@@ -313,7 +292,7 @@ with st.form("Fixed_Point_form"):
             st.text('upper triangular with online approach:')
             upper_triangular_with_online_approach
             st.text('solutions:')
-            solutions = back_substitution(upper_triangular_with_online_approach, symbolic_vars)
+            solutions = back_substitution(upper_triangular_with_online_approach)
             solutions
 
         elif selected_option == 'with offline approach':
@@ -322,11 +301,9 @@ with st.form("Fixed_Point_form"):
             st.text('upper triangular with offline approach:')
             upper_triangular_with_offline_approach
             st.text('solutions:')
-            solutions = back_substitution(upper_triangular_with_offline_approach, symbolic_vars)
+            solutions = back_substitution(upper_triangular_with_offline_approach)
             solutions
 
         #
         # get_doc('Fixed Point Method', f_x, g_x, x_exact, x_i, approximate_relative_error_cond,
         #         true_relative_error_cond, iter_num_cond, data)
-
-
