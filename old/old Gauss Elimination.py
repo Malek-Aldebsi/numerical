@@ -1,9 +1,18 @@
+import sympy as sp
 import pandas as pd
+
+
 import streamlit as st
 import numpy as np
+from sympy import sympify
 
 
-def gauss_elimination_without_scaling_or_pivoting(M):
+def matrix_representation(system, syms):
+    a, b = sp.linear_eq_to_matrix(system, syms)
+    return np.asarray(a.col_insert(len(syms), b), dtype=np.float32)
+
+
+def upper_triangular_without_scaling_or_pivoting(M):
     for i in range(0, M.shape[0] - 1):
         pivot = M[i][i]
 
@@ -22,7 +31,7 @@ def gauss_elimination_without_scaling_or_pivoting(M):
     return M
 
 
-def gauss_elimination_with_simple_pivoting(M):
+def upper_triangular_with_simple_pivoting(M):
     # iterate over matrix rows
     for i in range(0, M.shape[0] - 1):
         # initialize row-swap iterator
@@ -69,7 +78,7 @@ def gauss_elimination_with_simple_pivoting(M):
     return M
 
 
-def gauss_elimination_with_partial_pivoting(M):
+def upper_triangular_with_partial_pivoting(M):
     # iterate over matrix rows
     for i in range(0, M.shape[0] - 1):
         # find largest pivot
@@ -107,7 +116,7 @@ def gauss_elimination_with_partial_pivoting(M):
     return M
 
 
-def gauss_elimination_with_online_approach(M):
+def upper_triangular_with_online_approach(M):
     # iterate over matrix rows
     for i in range(0, M.shape[0] - 1):
         # perform scaling
@@ -155,7 +164,7 @@ def gauss_elimination_with_online_approach(M):
     return M
 
 
-def gauss_elimination_with_offline_approach(M):
+def upper_triangular_with_offline_approach(M):
     # iterate over matrix rows
     for i in range(0, M.shape[0] - 1):
         temp_M = M.copy()
@@ -230,105 +239,85 @@ def matrix_to_latex(matrix):
 
 st.title('Gauss Elimination')
 
-variable_num = int(st.text_input("number of variables", value=3))
+with st.form("Fixed_Point_form"):
+    col1, col2 = st.columns(2)
+    with col1:
+        variable_num = st.text_input("Enter the number of variables", value=3)
+        variable_num = int(variable_num)
+        st.write('variable number:', variable_num)
 
-headers = []
-values = []
-equ_names = []
-for i in range(variable_num):
-    headers.append(f'x{i+1}')
-    equ_names.append(f'equation #{i+1}')
-    values.append(0.0)
+    with col2:
+        st.text('')
+        st.text('')
+        st.form_submit_button(label="change")
 
-headers.append(f'b')
-data = {}
-for i in headers:
-    data[i] = values
+    equations = {}
+    for i in range(variable_num):
+        equations[i] = st.text_input(f"equation #{i}", value=r"0 * x1 + 0 * x2 + 0 * x3 + 0 * x4 + 0 * x5 + 0")
+        equations[i] = sympify(equations[i])
+        st.latex(equations[i])
 
-df = pd.DataFrame(data)
+    options = ['without scaling or pivoting', 'with simple pivoting', 'with partial pivoting', 'with online approach', 'with offline approach']
+    selected_option = st.selectbox('Select an option:', options)
 
-row_names = equ_names
-df['equations'] = row_names
-df.set_index('equations', inplace=True)
+    submit_button = st.form_submit_button(label="Submit")
 
-edited_df = st.data_editor(df)
+    if submit_button:
+        x1, x2, x3, x4, x5, x6, x7, x8, x9, x10 = sp.symbols('x1 x2 x3 x4 x5 x6 x7 x8 x9 x10')
+        symbolic_vars = [x1, x2, x3, x4, x5, x6, x7, x8, x9, x10]
 
-augmented_matrix=edited_df.values
+        _equations = [
+            sympify(equation) for index, equation in equations.items()
+        ]
 
-col1, col2, col3, col4, col5 = st.columns(5)
-with col1:
-    checkbox_without_scaling_or_pivoting = st.checkbox('without scaling or pivoting')
-with col2:
-    checkbox_with_simple_pivoting = st.checkbox('with simple pivoting')
-with col3:
-    checkbox_with_partial_pivoting = st.checkbox('with partial pivoting')
-with col4:
-    checkbox_with_online_approach = st.checkbox('with online approach')
-with col5:
-    checkbox_with_offline_approach = st.checkbox('with offline approach')
+        augmented_matrix = matrix_representation(system=_equations, syms=symbolic_vars[:variable_num])
+        st.text('augmented matrix:')
+        matrix_to_latex(augmented_matrix)
 
-if st.button('Go', use_container_width=True):
-    st.header('augmented matrix:')
-    matrix_to_latex(augmented_matrix)
+        if selected_option == 'without scaling or pivoting':
+            upper_triangular_without_scaling_or_pivoting = upper_triangular_without_scaling_or_pivoting(augmented_matrix.copy())
+            st.text('upper triangular without scaling or pivoting:')
+            matrix_to_latex(upper_triangular_without_scaling_or_pivoting)
+            st.text('solutions:')
+            solutions = back_substitution(upper_triangular_without_scaling_or_pivoting)
+            solutions
 
-    if checkbox_without_scaling_or_pivoting:
-        st.header('Without scaling or pivoting')
-        upper_triangular_without_scaling_or_pivoting = gauss_elimination_without_scaling_or_pivoting(augmented_matrix.copy())
-        st.text('upper triangular without scaling or pivoting:')
-        matrix_to_latex(upper_triangular_without_scaling_or_pivoting)
+        elif selected_option == 'with simple pivoting':
+            upper_triangular_with_simple_pivoting = upper_triangular_with_simple_pivoting(
+                augmented_matrix.copy())
+            st.text('upper triangular with simple pivoting:')
+            matrix_to_latex(upper_triangular_with_simple_pivoting)
+            st.text('solutions:')
+            solutions = back_substitution(upper_triangular_with_simple_pivoting)
+            solutions
 
-        solutions = back_substitution(upper_triangular_without_scaling_or_pivoting)
-        sol_txt = fr'x1 = {solutions[0]}'
-        for i in range(1, variable_num):
-                sol_txt += f', x{i+1} = {solutions[i]}'
-        st.text('solutions: ' + sol_txt)
+        elif selected_option == 'with partial pivoting':
+            upper_triangular_with_partial_pivoting = upper_triangular_with_partial_pivoting(
+                augmented_matrix.copy())
+            st.text('upper triangular with partial pivoting:')
+            matrix_to_latex(upper_triangular_with_partial_pivoting)
+            st.text('solutions:')
+            solutions = back_substitution(upper_triangular_with_partial_pivoting)
+            solutions
 
-    if checkbox_with_simple_pivoting:
-        st.header('With simple pivoting')
-        upper_triangular_with_simple_pivoting = gauss_elimination_with_simple_pivoting(
-            augmented_matrix.copy())
-        st.text('upper triangular with simple pivoting:')
-        matrix_to_latex(upper_triangular_with_simple_pivoting)
-        solutions = back_substitution(upper_triangular_with_simple_pivoting)
-        sol_txt = fr'x1 = {solutions[0]}'
-        for i in range(1, variable_num):
-            sol_txt += f', x{i + 1} = {solutions[i]}'
-        st.text('solutions: ' + sol_txt)
+        elif selected_option == 'with online approach':
+            upper_triangular_with_online_approach = upper_triangular_with_online_approach(
+                augmented_matrix.copy())
+            st.text('upper triangular with online approach:')
+            matrix_to_latex(upper_triangular_with_online_approach)
+            st.text('solutions:')
+            solutions = back_substitution(upper_triangular_with_online_approach)
+            solutions
 
-    if checkbox_with_partial_pivoting:
-        st.header('With partial pivoting')
-        upper_triangular_with_partial_pivoting = gauss_elimination_with_partial_pivoting(
-            augmented_matrix.copy())
-        st.text('upper triangular with partial pivoting:')
-        matrix_to_latex(upper_triangular_with_partial_pivoting)
-        solutions = back_substitution(upper_triangular_with_partial_pivoting)
-        sol_txt = fr'x1 = {solutions[0]}'
-        for i in range(1, variable_num):
-            sol_txt += f', x{i + 1} = {solutions[i]}'
-        st.text('solutions: ' + sol_txt)
+        elif selected_option == 'with offline approach':
+            upper_triangular_with_offline_approach = upper_triangular_with_offline_approach(
+                augmented_matrix.copy())
+            st.text('upper triangular with offline approach:')
+            matrix_to_latex(upper_triangular_with_offline_approach)
+            st.text('solutions:')
+            solutions = back_substitution(upper_triangular_with_offline_approach)
+            solutions
 
-    if checkbox_with_online_approach:
-        st.header('With online approach')
-        upper_triangular_with_online_approach = gauss_elimination_with_online_approach(
-            augmented_matrix.copy())
-        st.text('upper triangular with online approach:')
-        matrix_to_latex(upper_triangular_with_online_approach)
-
-        solutions = back_substitution(upper_triangular_with_online_approach)
-        sol_txt = fr'x1 = {solutions[0]}'
-        for i in range(1, variable_num):
-            sol_txt += f', x{i + 1} = {solutions[i]}'
-        st.text('solutions: ' + sol_txt)
-
-    if checkbox_with_offline_approach:
-        st.header('With offline approach')
-        upper_triangular_with_offline_approach = gauss_elimination_with_offline_approach(
-            augmented_matrix.copy())
-        st.text('upper triangular with offline approach:')
-        matrix_to_latex(upper_triangular_with_offline_approach)
-
-        solutions = back_substitution(upper_triangular_with_offline_approach)
-        sol_txt = fr'x1 = {solutions[0]}'
-        for i in range(1, variable_num):
-            sol_txt += f', x{i + 1} = {solutions[i]}'
-        st.text('solutions: ' + sol_txt)
+        #
+        # get_doc('Fixed Point Method', f_x, g_x, x_exact, x_i, approximate_relative_error_cond,
+        #         true_relative_error_cond, iter_num_cond, data)

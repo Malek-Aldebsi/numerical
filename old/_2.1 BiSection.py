@@ -145,7 +145,7 @@ with st.form("BiSection_form"):
         df = pd.DataFrame(data)
         df
         draw_approximate_and_true_errors(errors)
-
+        print(data)
         get_doc('Bi Section Method', f_x, x_exact, x_lower, x_upper, approximate_relative_error_cond,
                 true_relative_error_cond, iter_num_cond, data)
 
